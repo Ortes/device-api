@@ -14,16 +14,10 @@
 #include "esp_eth.h"
 #include "protocol_examples_common.h"
 
-#include "driver/gpio.h"
 #include <esp_http_server.h>
 #include <cJSON.h>
 #include <driver/dac.h>
 
-/* A simple example that demonstrates how to create GET and POST
- * handlers for the web server.
- */
-
-#define OUTPUT_PIN 18
 
 static const char* TAG = "APP";
 
@@ -65,7 +59,6 @@ static esp_err_t hello_get_handler(httpd_req_t* req) {
 
   cJSON_Delete(root);
 
-  gpio_set_level(OUTPUT_PIN, level > 0);
   dac_output_voltage(DAC_CHANNEL_1, level);
 
   ESP_LOGI(TAG, "Vibration at %i", level);
@@ -94,7 +87,6 @@ static httpd_handle_t start_webserver(void) {
 }
 
 static void stop_webserver(httpd_handle_t server) {
-  // Stop the httpd server
   httpd_stop(server);
 }
 
@@ -121,32 +113,14 @@ static void connect_handler(void* arg, esp_event_base_t event_base,
 void app_main(void) {
   static httpd_handle_t server = NULL;
 
-  dac_output_enable(DAC_CHANNEL_1);
-  gpio_config_t io_conf;
-  io_conf.intr_type = GPIO_PIN_INTR_DISABLE;
-  io_conf.mode = GPIO_MODE_OUTPUT;
-  io_conf.pin_bit_mask = 1ULL << OUTPUT_PIN;
-  io_conf.pull_down_en = 0;
-  io_conf.pull_up_en = 0;
-  gpio_config(&io_conf);
-
   ESP_ERROR_CHECK(nvs_flash_init());
   tcpip_adapter_init();
   ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-  /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.
-   * Read "Establishing Wi-Fi or Ethernet Connection" section in
-   * examples/protocols/README.md for more information about this function.
-   */
   ESP_ERROR_CHECK(example_connect());
-
-  /* Register event handlers to stop the server when Wi-Fi or Ethernet is disconnected,
-   * and re-start it upon connection.
-   */
 
   ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &connect_handler, &server));
   ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, &disconnect_handler, &server));
 
-  /* Start the server for the first time */
   server = start_webserver();
 }
